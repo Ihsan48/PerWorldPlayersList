@@ -23,16 +23,14 @@ namespace aminozomty\PerWorldPlayersList;
 use pocketmine\plugin\PluginBase;
 use pocketmine\Server;
 use pocketmine\Player;
+use pocketmine\utils\SingletonTrait;
 
 class Main extends PluginBase{
 
-    private static $instance = null;
+    use SingletonTrait;
 
-    public function onEnable(){
-        self::$instance = $this;
+    public function onEnable(): void{
+        $this->setInstance($this);
         $this->getServer()->getPluginManager()->registerEvents(new EventListener(), $this);
-    }
-    public static function getInstance(){
-        return self::$instance;
     }
 }

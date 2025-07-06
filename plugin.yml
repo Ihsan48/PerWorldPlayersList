@@ -17,19 +17,7 @@
 
 name: PerWorldPlayersList
 main: aminozomty\PerWorldPlayersList\Main
-api: 3.0.0
+api: 5.0.0
 version: 1.0.10
-mcpe-protocol:
-- 408
-- 419
-- 422
-- 428
-- 431
-- 440
-- 448
-- 465
-- 471
-- 475
-- 486
-author: aminozomty
+author: [aminozomty, Ihsan48]
 ...

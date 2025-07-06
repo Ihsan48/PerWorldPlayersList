@@ -21,65 +21,45 @@
 namespace aminozomty\PerWorldPlayersList;
 
 use pocketmine\Server;
-use pocketmine\Player;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
-use pocketmine\event\entity\EntityLevelChangeEvent;
 use pocketmine\network\mcpe\protocol\PlayerListPacket;
 use pocketmine\network\mcpe\protocol\types\PlayerListEntry;
-use pocketmine\network\mcpe\protocol\types\SkinAdapterSingleton;
 
 use aminozomty\PerWorldPlayersList\Main;
+use pocketmine\event\entity\EntityTeleportEvent;
+use pocketmine\player\Player;
 
-class EventListener implements Listener{
+class EventListener implements Listener
+{
 
-    public function onJoin(PlayerJoinEvent $event){
-        foreach (Main::getInstance()->getServer()->getOnlinePlayers() as $p){
-            if($p->getLevel()->getName() == $event->getPlayer()->getLevel()->getName()) return;
-            $entry = new PlayerListEntry();
-            $entry->uuid = $event->getPlayer()->getUniqueId();
-            $pk = new PlayerListPacket();
-            $pk->entries[] = $entry;
-            $pk->type = PlayerListPacket::TYPE_REMOVE;
-            $p->sendDataPacket($pk);
-            $entry = new PlayerListEntry();
-            $entry->uuid = $p->getPlayer()->getUniqueId();
-            $pk = new PlayerListPacket();
-            $pk->entries[] = $entry;
-            $pk->type = PlayerListPacket::TYPE_REMOVE;
-            $player = $event->getPlayer();
-            $player->sendDataPacket($pk);
-        } 
+    public function onJoin(PlayerJoinEvent $event): void
+    {
+        foreach (Server::getInstance()->getOnlinePlayers() as $player) {
+            if ($player->getWorld()->getFolderName() == $event->getPlayer()->getWorld()->getFolderName()) return;
+            $entry = PlayerListEntry::createRemovalEntry($event->getPlayer()->getUniqueId());
+            $player->getNetworkSession()->sendDataPacket(PlayerListPacket::remove([$entry]));
+            $entry = PlayerListEntry::createRemovalEntry($player->getUniqueId());
+            $event->getPlayer()->getNetworkSession()->sendDataPacket(PlayerListPacket::remove([$entry]));
+        }
     }
-    public function LevelChange(EntityLevelChangeEvent $event){
-        if (!$event->getEntity() instanceof Player) return;
-        foreach (Main::getInstance()->getServer()->getOnlinePlayers() as $p){
-            if($p->getLevel()->getName() == $event->getTarget()->getName()) {
-                $pk = new PlayerListPacket();
-                $pk->type = PlayerListPacket::TYPE_ADD;
-                $player = $event->getEntity();
-                $pk->entries[] = PlayerListEntry::createAdditionEntry($player->getUniqueId(), $player->getId(), $player->getDisplayName(), SkinAdapterSingleton::get()->toSkinData($player->getSkin()), $player->getXuid());
-                $p->sendDataPacket($pk);
-                $pk = new PlayerListPacket();
-                $pk->type = PlayerListPacket::TYPE_ADD;
-                $player = $p;
-                $pk->entries[] = PlayerListEntry::createAdditionEntry($player->getUniqueId(), $player->getId(), $player->getDisplayName(), SkinAdapterSingleton::get()->toSkinData($player->getSkin()), $player->getXuid());
-                $event->getEntity()->sendDataPacket($pk);
+
+    public function onEntityTeleport(EntityTeleportEvent $event)
+    {
+        $player = $event->getEntity();
+        if (!$player instanceof Player) return;
+        foreach (Main::getInstance()->getServer()->getOnlinePlayers() as $p) {
+            if ($p->getWorld()->getFolderName() == $player->getWorld()->getFolderName()) {
+                $entry = PlayerListEntry::createAdditionEntry($player->getUniqueId(), $player->getId(), $player->getDisplayName(), $player->getNetworkSession()->getTypeConverter()->getSkinAdapter()->toSkinData($player->getSkin()));
+                $p->getNetworkSession()->sendDataPacket(PlayerListPacket::add([$entry]));
+                $entry = PlayerListEntry::createAdditionEntry($p->getUniqueId(), $p->getId(), $p->getDisplayName(), $p->getNetworkSession()->getTypeConverter()->getSkinAdapter()->toSkinData($p->getSkin()));
+                $p->getNetworkSession()->sendDataPacket(PlayerListPacket::add([$entry]));
                 continue;
             }
-            $entry = new PlayerListEntry();
-            $entry->uuid = $event->getEntity()->getUniqueId();
-            $pk = new PlayerListPacket();
-            $pk->entries[] = $entry;
-            $pk->type = PlayerListPacket::TYPE_REMOVE;
-            $p->sendDataPacket($pk);
-            $entry = new PlayerListEntry();
-            $entry->uuid = $p->getPlayer()->getUniqueId();
-            $pk = new PlayerListPacket();
-            $pk->entries[] = $entry;
-            $pk->type = PlayerListPacket::TYPE_REMOVE;
-            $player = $event->getEntity();
-            $player->sendDataPacket($pk);
+            $entry = PlayerListEntry::createRemovalEntry($player->getUniqueId());
+            $p->getNetworkSession()->sendDataPacket(PlayerListPacket::remove([$entry]));
+            $entry = PlayerListEntry::createRemovalEntry($p->getUniqueId());
+            $player->getNetworkSession()->sendDataPacket(PlayerListPacket::remove([$entry]));
         }
     }
 }
